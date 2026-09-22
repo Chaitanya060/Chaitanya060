@@ -1,0 +1,41 @@
+name: Generate 3D Contribution
+
+on:
+  schedule:
+    # Runs every 12 hours
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: yoshi389111/github-profile-3d-contrib@0.7.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.repository_owner }}
+
+      - name: Commit & push to output branch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f profile-3d-contrib
+          git stash
+          git fetch origin output || true
+          git checkout output 2>/dev/null || git checkout --orphan output
+          git rm -rf . 2>/dev/null || true
+          git checkout stash -- profile-3d-contrib
+          mv profile-3d-contrib/* .
+          rmdir profile-3d-contrib
+          git add .
+          git commit -m "chore: update 3D contribution graph" || echo "no changes"
+          git push origin output --force
